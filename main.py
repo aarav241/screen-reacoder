@@ -1,70 +1,30 @@
-from tkinter import *
-from tkinter.filedialog import asksaveasfilename, askopenfilename
-import subprocess
+import datetime
 
-compiler = Tk()
-compiler.title('My Fantastic IDE')
-file_path = ''
+from PIL import ImageGrab
+import numpy as np
+import cv2
+from win32api import GetSystemMetrics
 
+width = GetSystemMetrics(0)
+height = GetSystemMetrics(1)
+time_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
+file_name = f'{time_stamp}.mp4'
+fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+captured_video = cv2.VideoWriter(file_name, fourcc, 20.0, (width, height))
 
-def set_file_path(path):
-    global file_path
-    file_path = path
+webcam = cv2.VideoCapture(1)
 
+while True:
+    img = ImageGrab.grab(bbox=(0, 0, width, height))
+    img_np = np.array(img)
+    img_final = cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
+    _, frame = webcam.read()
+    fr_height, fr_width, _ = frame.shape
+    img_final[0:fr_height, 0: fr_width, :] = frame[0: fr_height, 0: fr_width, :]
+    cv2.imshow('Secret Capture', img_final)
 
-def open_file():
-    path = askopenfilename(filetypes=[('Python Files', '*.py')])
-    with open(path, 'r') as file:
-        code = file.read()
-        editor.delete('1.0', END)
-        editor.insert('1.0', code)
-        set_file_path(path)
+    # cv2.imshow('webcam', frame)
 
-
-def save_as():
-    if file_path == '':
-        path = asksaveasfilename(filetypes=[('Python Files', '*.py')])
-    else:
-        path = file_path
-    with open(path, 'w') as file:
-        code = editor.get('1.0', END)
-        file.write(code)
-        set_file_path(path)
-
-
-def run():
-    if file_path == '':
-        save_prompt = Toplevel()
-        text = Label(save_prompt, text='Please save your code')
-        text.pack()
-        return
-    command = f'python {file_path}'
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    output, error = process.communicate()
-    code_output.insert('1.0', output)
-    code_output.insert('1.0',  error)
-
-
-menu_bar = Menu(compiler)
-
-file_menu = Menu(menu_bar, tearoff=0)
-file_menu.add_command(label='Open', command=open_file)
-file_menu.add_command(label='Save', command=save_as)
-file_menu.add_command(label='Save As', command=save_as)
-file_menu.add_command(label='Exit', command=exit)
-menu_bar.add_cascade(label='File', menu=file_menu)
-
-run_bar = Menu(menu_bar, tearoff=0)
-run_bar.add_command(label='Run', command=run)
-menu_bar.add_cascade(label='Run', menu=run_bar)
-
-compiler.config(menu=menu_bar)
-
-editor = Text()
-editor.pack()
-
-code_output = Text(height=10)
-code_output.pack()
-
-compiler.mainloop()
-
+    captured_video.write(img_final)
+    if cv2.waitKey(10) == ord('q'):
+        break
